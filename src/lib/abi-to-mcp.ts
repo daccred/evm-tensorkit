@@ -77,10 +77,36 @@ const solTypeToJsonType = (solType: string): string => {
   return 'string'; // Default fallback
 };
 
+// Interface for custom function descriptions
+interface CustomFunctionDescription {
+  description: string;
+  inputs: {
+    [paramName: string]: {
+      description: string;
+    };
+  };
+}
+
+interface CustomFunctionDescriptions {
+  [functionName: string]: CustomFunctionDescription;
+}
+
 /**
  * Generates a description for a parameter based on its Solidity type
  */
-const generateParamDescription = (name: string, type: string): string => {
+const generateParamDescription = (
+  name: string, 
+  type: string, 
+  customDescriptions?: CustomFunctionDescriptions,
+  functionName?: string
+): string => {
+  // Use custom description if available
+  if (customDescriptions && functionName && 
+      customDescriptions[functionName]?.inputs?.[name]?.description) {
+    return customDescriptions[functionName].inputs[name].description;
+  }
+
+  // Default descriptions
   if (type.includes('address')) {
     return `Ethereum address for ${name}`;
   }
@@ -102,7 +128,16 @@ const generateParamDescription = (name: string, type: string): string => {
 /**
  * Generates a description for a function based on its name and parameters
  */
-const generateFunctionDescription = (func: ABIFunction): string => {
+const generateFunctionDescription = (
+  func: ABIFunction, 
+  customDescriptions?: CustomFunctionDescriptions
+): string => {
+  // Use custom description if available
+  if (customDescriptions && customDescriptions[func.name]?.description) {
+    return customDescriptions[func.name].description;
+  }
+
+  // Default description generation
   const paramList = func.inputs.map(input => `${input.name} (${input.type})`).join(', ');
   const returnList = func.outputs.map(output => `${output.name || 'return'} (${output.type})`).join(', ');
   
@@ -129,14 +164,18 @@ const generateFunctionDescription = (func: ABIFunction): string => {
 /**
  * Processes an ABI input/output parameter and converts it to MCP schema format
  */
-const processABIParameter = (param: ABIInput | ABIOutput): MCPParameter => {
+const processABIParameter = (
+  param: ABIInput | ABIOutput, 
+  customDescriptions?: CustomFunctionDescriptions,
+  functionName?: string
+): MCPParameter => {
   const name = param.name || 'param';
   const jsonType = solTypeToJsonType(param.type);
   
   const mcpParam: MCPParameter = {
     name,
     type: jsonType,
-    description: generateParamDescription(name, param.type),
+    description: generateParamDescription(name, param.type, customDescriptions, functionName),
   };
   
   // Handle arrays
@@ -156,7 +195,7 @@ const processABIParameter = (param: ABIInput | ABIOutput): MCPParameter => {
       };
       
       param.components.forEach(component => {
-        const processedComponent = processABIParameter(component);
+        const processedComponent = processABIParameter(component, customDescriptions, functionName);
         if (mcpParam.items && mcpParam.items.properties) {
           mcpParam.items.properties[component.name] = processedComponent;
         }
@@ -166,7 +205,7 @@ const processABIParameter = (param: ABIInput | ABIOutput): MCPParameter => {
       mcpParam.properties = {};
       
       param.components.forEach(component => {
-        const processedComponent = processABIParameter(component);
+        const processedComponent = processABIParameter(component, customDescriptions, functionName);
         if (mcpParam.properties) {
           mcpParam.properties[component.name] = processedComponent;
         }
@@ -180,10 +219,13 @@ const processABIParameter = (param: ABIInput | ABIOutput): MCPParameter => {
 /**
  * Converts an ABI function to MCP action format
  */
-const abiFunctionToMCPAction = (func: ABIFunction): MCPAction => {
+const abiFunctionToMCPAction = (
+  func: ABIFunction, 
+  customDescriptions?: CustomFunctionDescriptions
+): MCPAction => {
   const action: MCPAction = {
     name: func.name,
-    description: generateFunctionDescription(func),
+    description: generateFunctionDescription(func, customDescriptions),
     parameters: {
       type: 'object',
       properties: {},
@@ -193,7 +235,7 @@ const abiFunctionToMCPAction = (func: ABIFunction): MCPAction => {
   
   // Process inputs
   func.inputs.forEach(input => {
-    const processedInput = processABIParameter(input);
+    const processedInput = processABIParameter(input, customDescriptions, func.name);
     action.parameters.properties[input.name] = processedInput;
     action.parameters.required.push(input.name);
   });
@@ -218,7 +260,10 @@ const mcpActionToGPTAction = (mcpAction: MCPAction): GPTAction => {
 /**
  * Converts an ABI JSON string to MCP schema
  */
-export const abiToMCPSchema = (abiJson: string): string => {
+export const abiToMCPSchema = (
+  abiJson: string, 
+  customDescriptions?: CustomFunctionDescriptions
+): string => {
   try {
     const abi = JSON.parse(abiJson);
     
@@ -230,7 +275,9 @@ export const abiToMCPSchema = (abiJson: string): string => {
     );
     
     // Convert each function to MCP action
-    const mcpActions = functions.map((func: ABIFunction) => abiFunctionToMCPAction(func));
+    const mcpActions = functions.map((func: ABIFunction) => 
+      abiFunctionToMCPAction(func, customDescriptions)
+    );
     
     return JSON.stringify(mcpActions, null, 2);
   } catch (error) {
@@ -242,9 +289,12 @@ export const abiToMCPSchema = (abiJson: string): string => {
 /**
  * Converts an ABI JSON string to OpenAI GPT Action schema
  */
-export const abiToGPTActionSchema = (abiJson: string): string => {
+export const abiToGPTActionSchema = (
+  abiJson: string, 
+  customDescriptions?: CustomFunctionDescriptions
+): string => {
   try {
-    const mcpSchema = JSON.parse(abiToMCPSchema(abiJson));
+    const mcpSchema = JSON.parse(abiToMCPSchema(abiJson, customDescriptions));
     const gptActions = mcpSchema.map((action: MCPAction) => mcpActionToGPTAction(action));
     
     return JSON.stringify(gptActions, null, 2);
