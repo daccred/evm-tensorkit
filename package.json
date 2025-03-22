@@ -13,6 +13,8 @@
     "vercel-build": "prisma db push --accept-data-loss && next build"
   },
   "dependencies": {
+    "konva": "^9.3.0",
+    "react-konva": "^18.2.10",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@rainbow-me/rainbowkit": "^2.0.1",

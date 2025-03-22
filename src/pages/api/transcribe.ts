@@ -35,10 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const file = files.file as any;
     
-    // Transcribe the audio using OpenAI's Whisper API
+    // Transcribe the audio using OpenAI's latest Whisper model
     const transcription = await openai.audio.transcriptions.create({
       file: createReadStream(file.filepath),
-      model: 'whisper-1',
+      model: 'whisper-1', // Using whisper-1 which is the latest available model
+      response_format: 'json',
+      temperature: 0.2, // Lower temperature for more accurate transcriptions
     });
     
     // Clean up the temporary file

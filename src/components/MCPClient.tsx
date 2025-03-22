@@ -3,7 +3,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { VoiceRecorder } from '@/components/VoiceRecorder';
+import dynamic from 'next/dynamic';
+
+// Import the CustomAudioRecorder with no SSR
+const CustomAudioRecorder = dynamic(
+  () => import('@/components/CustomAudioRecorder'),
+  { ssr: false }
+);
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Loader2 } from 'lucide-react';
@@ -178,7 +184,7 @@ export function MCPClient({ contractAddress, network }: MCPClientProps) {
         </ScrollArea>
       </CardContent>
       <CardFooter className="flex flex-col space-y-4">
-        <VoiceRecorder 
+        <CustomAudioRecorder 
           onTranscription={handleVoiceInput} 
           isProcessing={isLoading || isExecuting}
         />
