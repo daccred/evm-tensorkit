@@ -25,6 +25,7 @@ interface SmartContract {
   importMethod: string;
   mcpSchema?: string | null;
   gptActionSchema?: string | null;
+  customFunctionDescriptions?: any;
   createdAt: string;
   updatedAt: string;
 }
