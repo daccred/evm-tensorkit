@@ -232,16 +232,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             result: formattedResult
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`[contract-server] Error calling contract function ${action}:`, error);
         return res.status(500).json({ 
           error: `Failed to call contract function "${action}"`,
-          details: error.message
+          details: error?.message || String(error)
         });
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('[contract-server] Unexpected error:', error);
-    return res.status(500).json({ error: 'An unexpected error occurred', details: error.message });
+    return res.status(500).json({ 
+      error: 'An unexpected error occurred', 
+      details: error?.message || String(error) 
+    });
   }
 }

@@ -80,8 +80,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       schema: parsedSchema,
       availableActions
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[contract-server/address] Unexpected error:', error);
-    return res.status(500).json({ error: 'An unexpected error occurred', details: error.message });
+    return res.status(500).json({ 
+      error: 'An unexpected error occurred', 
+      details: error?.message || String(error) 
+    });
   }
 }
