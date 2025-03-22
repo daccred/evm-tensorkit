@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -26,12 +27,21 @@ export default function App({ Component, pageProps }: AppProps) {
     return null;
   }
 
+  // Check if the current page is the preview page
+  const isPreviewPage = router.pathname.startsWith('/preview/');
+
   return (
     <div className="min-h-screen">
       <AuthProvider>
-        <ProtectedRoute>
+        {isPreviewPage ? (
+          // Don't wrap preview pages with ProtectedRoute
           <Component {...pageProps} />
-        </ProtectedRoute>
+        ) : (
+          // Wrap all other pages with ProtectedRoute
+          <ProtectedRoute>
+            <Component {...pageProps} />
+          </ProtectedRoute>
+        )}
         <Toaster />
       </AuthProvider>
     </div>

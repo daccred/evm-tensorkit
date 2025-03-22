@@ -4,8 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
 
 // Dynamically import the media recorder with no SSR
-const ReactMediaRecorder = dynamic(
-  () => import('react-media-recorder').then(mod => ({ default: mod.useReactMediaRecorder })),
+const ReactMediaRecorderComponent = dynamic(
+  () => import('react-media-recorder').then(mod => {
+    // Return the component that uses the hook
+    return function UseMediaRecorder(props: any) {
+      const recorder = mod.useReactMediaRecorder(props);
+      return props.children(recorder);
+    };
+  }),
   { ssr: false }
 );
 
@@ -17,20 +23,13 @@ interface VoiceRecorderProps {
 function VoiceRecorderComponent({ onTranscription, isProcessing }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-
-  // Use the dynamically imported hook
-  const {
-    status,
-    startRecording,
-    stopRecording,
-    mediaBlobUrl,
-  } = ReactMediaRecorder({
-    audio: true,
-    onStop: async (blobUrl, blob) => {
-      if (blob) {
-        await transcribeAudio(blob);
-      }
-    },
+  
+  // We'll use the recorder inside the dynamically loaded component
+  const [recorderState, setRecorderState] = useState<any>({
+    status: 'idle',
+    startRecording: () => {},
+    stopRecording: () => {},
+    mediaBlobUrl: null
   });
 
   const transcribeAudio = async (audioBlob: Blob) => {
@@ -67,47 +66,65 @@ function VoiceRecorderComponent({ onTranscription, isProcessing }: VoiceRecorder
 
   const toggleRecording = () => {
     if (isRecording) {
-      stopRecording();
+      recorderState.stopRecording();
     } else {
-      startRecording();
+      recorderState.startRecording();
     }
     setIsRecording(!isRecording);
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      <Button
-        onClick={toggleRecording}
-        disabled={isTranscribing || isProcessing}
-        variant={isRecording ? "destructive" : "default"}
-        size="lg"
-        className="rounded-full w-16 h-16 flex items-center justify-center"
-      >
-        {isRecording ? (
-          <MicOff className="h-6 w-6" />
-        ) : (
-          <Mic className="h-6 w-6" />
-        )}
-      </Button>
-      
-      <div className="text-sm text-muted-foreground">
-        {isRecording ? (
-          <span className="text-destructive">Recording...</span>
-        ) : isTranscribing ? (
-          <div className="flex items-center">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            <span>Transcribing...</span>
+    <ReactMediaRecorderComponent
+      audio
+      onStop={async (blobUrl: string, blob: Blob) => {
+        if (blob) {
+          await transcribeAudio(blob);
+        }
+      }}
+    >
+      {(recorder: any) => {
+        // Store the recorder state for use in toggleRecording
+        useEffect(() => {
+          setRecorderState(recorder);
+        }, [recorder]);
+        
+        return (
+          <div className="flex flex-col items-center space-y-4">
+            <Button
+              onClick={toggleRecording}
+              disabled={isTranscribing || isProcessing}
+              variant={isRecording ? "destructive" : "default"}
+              size="lg"
+              className="rounded-full w-16 h-16 flex items-center justify-center"
+            >
+              {isRecording ? (
+                <MicOff className="h-6 w-6" />
+              ) : (
+                <Mic className="h-6 w-6" />
+              )}
+            </Button>
+            
+            <div className="text-sm text-muted-foreground">
+              {isRecording ? (
+                <span className="text-destructive">Recording...</span>
+              ) : isTranscribing ? (
+                <div className="flex items-center">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <span>Transcribing...</span>
+                </div>
+              ) : isProcessing ? (
+                <div className="flex items-center">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <span>Processing...</span>
+                </div>
+              ) : (
+                <span>Click to record</span>
+              )}
+            </div>
           </div>
-        ) : isProcessing ? (
-          <div className="flex items-center">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            <span>Processing...</span>
-          </div>
-        ) : (
-          <span>Click to record</span>
-        )}
-      </div>
-    </div>
+        );
+      }}
+    </ReactMediaRecorderComponent>
   );
 }
 

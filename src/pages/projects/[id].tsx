@@ -382,6 +382,35 @@ export default function ProjectDetail() {
             </Dialog>
           </div>
 
+          <div className="space-y-6 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Features</CardTitle>
+                <CardDescription>
+                  Explore the advanced features available for your smart contracts
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">Preview Page</h3>
+                    <p className="text-sm text-muted-foreground">
+                      A public-facing interface that allows anyone to interact with your smart contract using natural language and voice commands.
+                      Powered by AI, it translates user requests into contract function calls.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">MCP Server</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Model Context Protocol server that provides a standardized API for AI models to interact with your smart contract.
+                      This enables seamless integration with various AI assistants and tools.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold">Smart Contracts</h2>
             
@@ -600,7 +629,7 @@ export default function ProjectDetail() {
                       </Accordion>
                     </CardContent>
                     <CardFooter>
-                      <div className="flex space-x-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -609,6 +638,28 @@ export default function ProjectDetail() {
                           <ExternalLink className="mr-2 h-4 w-4" />
                           View on Explorer
                         </Button>
+                        
+                        {contract.mcpSchema && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/preview/${contract.address}`, '_blank')}
+                            >
+                              <Server className="mr-2 h-4 w-4" />
+                              Open Preview
+                            </Button>
+                            
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/api/contract-server/${contract.address}`, '_blank')}
+                            >
+                              <Code className="mr-2 h-4 w-4" />
+                              MCP Server
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </CardFooter>
                   </Card>
