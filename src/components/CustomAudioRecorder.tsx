@@ -31,8 +31,16 @@ const CustomAudioRecorder: React.FC<CustomAudioRecorderProps> = ({
   // Initialize audio context and analyzer
   const initAudio = async () => {
     try {
-      // Get microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Get microphone access with high quality audio settings
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1
+        } 
+      });
       streamRef.current = stream;
       
       // Create audio context
@@ -54,9 +62,22 @@ const CustomAudioRecorder: React.FC<CustomAudioRecorderProps> = ({
       source.connect(analyser);
       sourceRef.current = source;
       
-      // Create media recorder
-      const recorder = new MediaRecorder(stream);
-      setMediaRecorder(recorder);
+      // Create media recorder with high quality settings
+      const options = { 
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000 // 128 kbps for better quality
+      };
+      
+      let recorder: MediaRecorder;
+      
+      // Check if the browser supports the specified MIME type
+      if (MediaRecorder.isTypeSupported(options.mimeType)) {
+        recorder = new MediaRecorder(stream, options);
+      } else {
+        // Fallback to default settings
+        console.log('Specified MIME type not supported, using default');
+        recorder = new MediaRecorder(stream);
+      }
       
       // Handle data available event
       recorder.ondataavailable = (e) => {
@@ -69,6 +90,8 @@ const CustomAudioRecorder: React.FC<CustomAudioRecorderProps> = ({
         await transcribeAudio(audioBlob);
         setAudioChunks([]);
       };
+      
+      setMediaRecorder(recorder);
       
       // Start visualization
       startVisualization();
@@ -107,7 +130,11 @@ const CustomAudioRecorder: React.FC<CustomAudioRecorderProps> = ({
   const startRecording = () => {
     if (!mediaRecorder) return;
     
-    mediaRecorder.start();
+    // Clear previous audio chunks
+    setAudioChunks([]);
+    
+    // Request data every 1 second to ensure we get chunks
+    mediaRecorder.start(1000);
     setIsRecording(true);
   };
   
@@ -115,6 +142,10 @@ const CustomAudioRecorder: React.FC<CustomAudioRecorderProps> = ({
   const stopRecording = () => {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
     
+    // Request final data chunk before stopping
+    mediaRecorder.requestData();
+    
+    // Stop the recorder
     mediaRecorder.stop();
     setIsRecording(false);
   };

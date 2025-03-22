@@ -79,17 +79,23 @@ export function MCPClient({ contractAddress, network }: MCPClientProps) {
       // Add the assistant's response to the messages
       setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
       
-      // Check if the response contains an action to execute
-      try {
-        const actionMatch = data.content.match(/```json\s*({[\s\S]*?})\s*```/);
-        if (actionMatch) {
-          const actionData = JSON.parse(actionMatch[1]);
-          if (actionData.action && actionData.parameters) {
-            await executeAction(actionData.action, actionData.parameters);
+      // Check if the response contains a function call
+      if (data.functionCall) {
+        console.log('Function call detected:', data.functionCall);
+        await executeAction(data.functionCall.action, data.functionCall.parameters);
+      } else {
+        // Fallback to the old method of parsing JSON from code blocks
+        try {
+          const actionMatch = data.content.match(/```json\s*({[\s\S]*?})\s*```/);
+          if (actionMatch) {
+            const actionData = JSON.parse(actionMatch[1]);
+            if (actionData.action && actionData.parameters) {
+              await executeAction(actionData.action, actionData.parameters);
+            }
           }
+        } catch (error) {
+          console.error('Error parsing action from content:', error);
         }
-      } catch (error) {
-        console.error('Error parsing action:', error);
       }
     } catch (error) {
       console.error('Error processing message:', error);
