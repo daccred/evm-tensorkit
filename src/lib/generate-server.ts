@@ -209,7 +209,7 @@ wss.on('connection', (ws) => {
   // Send welcome message
   ws.send(JSON.stringify({ 
     type: 'info', 
-    message: \`Connected to ${CONTRACT_NAME} MCP server\` 
+    message: \`Connected to ${contractName} MCP server\` 
   }));
   
   // Handle incoming messages
@@ -273,7 +273,7 @@ wss.on('connection', (ws) => {
 // Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(\`MCP server for \${CONTRACT_NAME} running on port \${PORT}\`);
+  console.log(\`MCP server for \${contractName} running on port \${PORT}\`);
   console.log(\`REST API: http://localhost:\${PORT}/\`);
   console.log(\`WebSocket: ws://localhost:\${PORT}\`);
 });
