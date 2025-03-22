@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft, PlusCircle, Trash2, Edit, ExternalLink } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Trash2, Edit, ExternalLink, Code, Download, Server } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import axios from 'axios';
 
 interface SmartContract {
@@ -22,6 +23,8 @@ interface SmartContract {
   sourceCode?: string | null;
   networkData?: any;
   importMethod: string;
+  mcpSchema?: string | null;
+  gptActionSchema?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -429,6 +432,172 @@ export default function ProjectDetail() {
                           </p>
                         </div>
                       </div>
+                    </CardContent>
+                    <CardContent className="pt-4">
+                      <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="mcp">
+                          <AccordionTrigger className="text-sm font-medium">
+                            Model Context Protocol Integration
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-4 pt-2">
+                              <p className="text-sm text-muted-foreground">
+                                Generate MCP-compatible schemas and server code for this contract to integrate with AI models.
+                              </p>
+                              
+                              <div className="flex flex-col space-y-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="justify-start"
+                                  onClick={async () => {
+                                    try {
+                                      const response = await axios.post(`/api/contracts/${contract.id}/generate-schemas`);
+                                      
+                                      // Update the contract in the project state
+                                      setProject(prev => {
+                                        if (!prev) return prev;
+                                        return {
+                                          ...prev,
+                                          contracts: prev.contracts.map(c => 
+                                            c.id === contract.id 
+                                              ? { 
+                                                  ...c, 
+                                                  mcpSchema: response.data.mcpSchema,
+                                                  gptActionSchema: response.data.gptActionSchema
+                                                } 
+                                              : c
+                                          )
+                                        };
+                                      });
+                                      
+                                      toast({
+                                        title: 'Success',
+                                        description: 'MCP schemas generated successfully',
+                                      });
+                                    } catch (error) {
+                                      console.error('Error generating schemas:', error);
+                                      toast({
+                                        variant: 'destructive',
+                                        title: 'Error',
+                                        description: 'Failed to generate MCP schemas',
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Code className="mr-2 h-4 w-4" />
+                                  {contract.mcpSchema ? 'Regenerate MCP Schemas' : 'Generate MCP Schemas'}
+                                </Button>
+                                
+                                {contract.mcpSchema && (
+                                  <>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="justify-start"
+                                      onClick={async () => {
+                                        try {
+                                          const response = await axios.get(`/api/contracts/${contract.id}/generate-server`);
+                                          
+                                          // Create a zip file from the server files
+                                          const JSZip = (await import('jszip')).default;
+                                          const zip = new JSZip();
+                                          
+                                          // Add files to the zip
+                                          const files = response.data.files;
+                                          Object.entries(files).forEach(([path, content]) => {
+                                            zip.file(path, content as string);
+                                          });
+                                          
+                                          // Generate the zip file
+                                          const zipBlob = await zip.generateAsync({ type: 'blob' });
+                                          
+                                          // Create a download link
+                                          const url = URL.createObjectURL(zipBlob);
+                                          const a = document.createElement('a');
+                                          a.href = url;
+                                          a.download = `${contract.name || 'contract'}-mcp-server.zip`;
+                                          document.body.appendChild(a);
+                                          a.click();
+                                          document.body.removeChild(a);
+                                          URL.revokeObjectURL(url);
+                                          
+                                          toast({
+                                            title: 'Success',
+                                            description: 'Server code generated and downloaded',
+                                          });
+                                        } catch (error) {
+                                          console.error('Error generating server:', error);
+                                          toast({
+                                            variant: 'destructive',
+                                            title: 'Error',
+                                            description: 'Failed to generate server code',
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Download TypeScript Server
+                                    </Button>
+                                    
+                                    <div className="mt-4">
+                                      <div className="flex justify-between items-center">
+                                        <p className="text-xs font-medium mb-1">MCP Schema Preview:</p>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="h-6 text-xs"
+                                          onClick={() => {
+                                            const url = `${window.location.origin}/api/mcp/${contract.id}`;
+                                            navigator.clipboard.writeText(url);
+                                            toast({
+                                              title: 'URL Copied',
+                                              description: 'MCP schema URL copied to clipboard',
+                                            });
+                                          }}
+                                        >
+                                          Copy URL
+                                        </Button>
+                                      </div>
+                                      <div className="bg-muted p-2 rounded-md overflow-auto max-h-40">
+                                        <pre className="text-xs font-mono whitespace-pre-wrap">
+                                          {contract.mcpSchema ? JSON.stringify(JSON.parse(contract.mcpSchema), null, 2) : 'No schema generated yet'}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="mt-4">
+                                      <div className="flex justify-between items-center">
+                                        <p className="text-xs font-medium mb-1">GPT Action Schema Preview:</p>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="h-6 text-xs"
+                                          onClick={() => {
+                                            const url = `${window.location.origin}/api/gpt-actions/${contract.id}`;
+                                            navigator.clipboard.writeText(url);
+                                            toast({
+                                              title: 'URL Copied',
+                                              description: 'GPT Action schema URL copied to clipboard',
+                                            });
+                                          }}
+                                        >
+                                          Copy URL
+                                        </Button>
+                                      </div>
+                                      <div className="bg-muted p-2 rounded-md overflow-auto max-h-40">
+                                        <pre className="text-xs font-mono whitespace-pre-wrap">
+                                          {contract.gptActionSchema ? JSON.stringify(JSON.parse(contract.gptActionSchema), null, 2) : 'No schema generated yet'}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
                     </CardContent>
                     <CardFooter>
                       <div className="flex space-x-2">
