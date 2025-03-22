@@ -1,23 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { useReactMediaRecorder } from 'react-media-recorder';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
+
+// Dynamically import the media recorder with no SSR
+const ReactMediaRecorder = dynamic(
+  () => import('react-media-recorder').then(mod => ({ default: mod.useReactMediaRecorder })),
+  { ssr: false }
+);
 
 interface VoiceRecorderProps {
   onTranscription: (text: string) => void;
   isProcessing: boolean;
 }
 
-export function VoiceRecorder({ onTranscription, isProcessing }: VoiceRecorderProps) {
+function VoiceRecorderComponent({ onTranscription, isProcessing }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
 
+  // Use the dynamically imported hook
   const {
     status,
     startRecording,
     stopRecording,
     mediaBlobUrl,
-  } = useReactMediaRecorder({
+  } = ReactMediaRecorder({
     audio: true,
     onStop: async (blobUrl, blob) => {
       if (blob) {
@@ -103,3 +110,9 @@ export function VoiceRecorder({ onTranscription, isProcessing }: VoiceRecorderPr
     </div>
   );
 }
+
+// Export a client-side only component
+export const VoiceRecorder = dynamic(
+  () => Promise.resolve(VoiceRecorderComponent),
+  { ssr: false }
+);

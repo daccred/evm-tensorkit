@@ -1,5 +1,4 @@
-import { NextRequest } from 'next/server';
-import { OpenAIStream, StreamingTextResponse } from 'ai';
+import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import prisma from '@/lib/prisma';
 
@@ -8,28 +7,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function handler(req: NextRequest) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Extract the request body
-    const { messages, contractAddress, network, walletAddress } = await req.json();
+    const { messages, contractAddress, network, walletAddress } = req.body;
 
     // Validate required parameters
     if (!contractAddress) {
-      return new Response(JSON.stringify({ error: 'Contract address is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return res.status(400).json({ error: 'Contract address is required' });
     }
 
     if (!walletAddress) {
-      return new Response(JSON.stringify({ error: 'Wallet address is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return res.status(400).json({ error: 'Wallet address is required' });
     }
 
     // Find the contract by address
@@ -41,10 +30,7 @@ export default async function handler(req: NextRequest) {
     });
 
     if (!contract) {
-      return new Response(JSON.stringify({ error: 'Contract not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return res.status(404).json({ error: 'Contract not found' });
     }
 
     // Get the MCP schema
@@ -81,17 +67,18 @@ Be helpful, concise, and accurate in your responses.`,
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: combinedMessages,
-      stream: true,
+      stream: false,
     });
 
-    // Convert the response to a streaming text response
-    const stream = OpenAIStream(response);
-    return new StreamingTextResponse(stream);
+    // Return the response
+    return res.status(200).json({
+      role: 'assistant',
+      content: response.choices[0].message.content,
+    });
   } catch (error: any) {
     console.error('Chat API error:', error);
-    return new Response(JSON.stringify({ error: error.message || 'An error occurred' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+    return res.status(500).json({ 
+      error: error.message || 'An error occurred',
     });
   }
 }

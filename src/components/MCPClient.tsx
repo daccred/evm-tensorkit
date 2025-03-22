@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useChat } from 'ai/react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,11 @@ import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Loader2 } from 'lucide-react';
 
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 interface MCPClientProps {
   contractAddress: string;
   network: string;
@@ -17,37 +21,78 @@ interface MCPClientProps {
 export function MCPClient({ contractAddress, network }: MCPClientProps) {
   const { address, isConnected } = useAccount();
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
   
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    append,
-    setMessages,
-  } = useChat({
-    api: '/api/chat',
-    body: {
-      contractAddress,
-      network,
-      walletAddress: address,
-    },
-    onResponse: () => {
-      setIsExecuting(false);
-    },
-    onError: (error) => {
-      console.error('Chat error:', error);
-      setIsExecuting(false);
-    },
-  });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
 
-  const handleVoiceInput = (text: string) => {
-    if (text.trim()) {
-      append({
-        role: 'user',
-        content: text,
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    
+    const userMessage = { role: 'user' as const, content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    await processMessage(userMessage);
+  };
+
+  const handleVoiceInput = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+    
+    const userMessage = { role: 'user' as const, content: text };
+    setMessages(prev => [...prev, userMessage]);
+    await processMessage(userMessage);
+  };
+
+  const processMessage = async (userMessage: Message) => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: messages.concat(userMessage),
+          contractAddress,
+          network,
+          walletAddress: address,
+        }),
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+      
+      const data = await response.json();
+      
+      // Add the assistant's response to the messages
+      setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+      
+      // Check if the response contains an action to execute
+      try {
+        const actionMatch = data.content.match(/```json\s*({[\s\S]*?})\s*```/);
+        if (actionMatch) {
+          const actionData = JSON.parse(actionMatch[1]);
+          if (actionData.action && actionData.parameters) {
+            await executeAction(actionData.action, actionData.parameters);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing action:', error);
+      }
+    } catch (error) {
+      console.error('Error processing message:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, there was an error processing your request.' 
+      }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -69,16 +114,16 @@ export function MCPClient({ contractAddress, network }: MCPClientProps) {
       const result = await response.json();
       
       // Add the result to the chat
-      append({
+      setMessages(prev => [...prev, {
         role: 'assistant',
         content: `Action executed: ${action}\nResult: ${JSON.stringify(result, null, 2)}`,
-      });
+      }]);
     } catch (error) {
       console.error('Error executing action:', error);
-      append({
+      setMessages(prev => [...prev, {
         role: 'assistant',
         content: `Error executing action: ${error}`,
-      });
+      }]);
     } finally {
       setIsExecuting(false);
     }
