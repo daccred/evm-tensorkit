@@ -186,8 +186,16 @@ export function AudioReactiveOrb({ audioData }: AudioReactiveOrbProps) {
     <group ref={groupRef}>
       {[0, 1, 2, 3].map((index) => {
         const shader = { ...shaderData }
-        shader.uniforms = JSON.parse(JSON.stringify(shaderData.uniforms)) as ShaderUniforms
-        shader.uniforms.map.value = gradients[index]
+        // Create a deep copy of uniforms to avoid sharing references
+        shader.uniforms = {
+          time: { value: 0 },
+          distort: { value: 0.3 },
+          speed: { value: 0.5 },
+          color: { value: new THREE.Color("#ffffff") },
+          emissive: { value: new THREE.Color("#4facfe") },
+          emissiveIntensity: { value: 0.5 },
+          map: { value: gradients[index] }
+        }
         
         return (
           <mesh
