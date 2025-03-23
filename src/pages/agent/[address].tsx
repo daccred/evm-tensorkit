@@ -5,7 +5,7 @@ import { MCPClient } from '@/components/MCPClient_privy';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import PrivyProviders from '@/components/PrivyProvider';
-// import { AudioVisualizer } from '@/components/audio-visualizer';
+import { AudioVisualizer } from '@/components/audio-visualizer';
 
 interface PreviewPageProps {
   contract: {
@@ -78,7 +78,7 @@ function AgentContent({ contract, error }: PreviewPageProps) {
         </CardHeader>
         <CardContent>
           <div className="mb-6 h-[400px]">
-            {/* <AudioVisualizer /> */}
+            <AudioVisualizer />
           </div>
           <Separator className="my-4" />
           <p className="mb-4">
