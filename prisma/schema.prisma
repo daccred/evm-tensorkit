@@ -38,6 +38,7 @@ model SmartContract {
   importMethod  String   @default("manual") // "etherscan" or "manual"
   mcpSchema     String?  @db.Text
   gptActionSchema String? @db.Text
+  customFunctionDescriptions Json? // Store custom descriptions for contract functions
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   projectId     String

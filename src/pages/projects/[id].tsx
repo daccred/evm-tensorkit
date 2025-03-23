@@ -25,6 +25,7 @@ interface SmartContract {
   importMethod: string;
   mcpSchema?: string | null;
   gptActionSchema?: string | null;
+  customFunctionDescriptions?: any;
   createdAt: string;
   updatedAt: string;
 }
@@ -464,6 +465,51 @@ export default function ProjectDetail() {
                     </CardContent>
                     <CardContent className="pt-4">
                       <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="function-descriptions">
+                          <AccordionTrigger className="text-sm font-medium">
+                            Function Descriptions for AI
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-4 pt-2">
+                              <p className="text-sm text-muted-foreground">
+                                Customize how the AI understands your contract functions. Provide clear, human-friendly descriptions
+                                that will help users interact with your contract more effectively.
+                              </p>
+                              
+                              <div className="mt-4">
+                                {/* Import the ContractFunctionEditor component */}
+                                {(() => {
+                                  const ContractFunctionEditor = require('@/components/ContractFunctionEditor').default;
+                                  return (
+                                    <ContractFunctionEditor
+                                      contractId={contract.id}
+                                      abiJson={contract.abiJson}
+                                      customDescriptions={contract.customFunctionDescriptions as any || {}}
+                                      onUpdate={(updatedDescriptions) => {
+                                        // Update the contract in the project state
+                                        setProject(prev => {
+                                          if (!prev) return prev;
+                                          return {
+                                            ...prev,
+                                            contracts: prev.contracts.map(c => 
+                                              c.id === contract.id 
+                                                ? { 
+                                                    ...c, 
+                                                    customFunctionDescriptions: updatedDescriptions
+                                                  } 
+                                                : c
+                                            )
+                                          };
+                                        });
+                                      }}
+                                    />
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                        
                         <AccordionItem value="mcp">
                           <AccordionTrigger className="text-sm font-medium">
                             Model Context Protocol Integration
@@ -472,6 +518,7 @@ export default function ProjectDetail() {
                             <div className="space-y-4 pt-2">
                               <p className="text-sm text-muted-foreground">
                                 Generate MCP-compatible schemas and server code for this contract to integrate with AI models.
+                                The schemas will use your custom function descriptions if you've provided them.
                               </p>
                               
                               <div className="flex flex-col space-y-2">

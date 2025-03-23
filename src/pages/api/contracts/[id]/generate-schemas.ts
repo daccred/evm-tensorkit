@@ -39,11 +39,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: 'You do not have permission to access this contract' });
     }
 
-    // Generate MCP schema
-    const mcpSchema = abiToMCPSchema(contract.abiJson);
+    // Get custom function descriptions if available
+    const customFunctionDescriptions = contract.customFunctionDescriptions as any || {};
+
+    // Generate MCP schema with custom descriptions
+    const mcpSchema = abiToMCPSchema(contract.abiJson, customFunctionDescriptions);
     
-    // Generate GPT Action schema
-    const gptActionSchema = abiToGPTActionSchema(contract.abiJson);
+    // Generate GPT Action schema with custom descriptions
+    const gptActionSchema = abiToGPTActionSchema(contract.abiJson, customFunctionDescriptions);
 
     // Update the contract with the generated schemas
     const updatedContract = await prisma.smartContract.update({
