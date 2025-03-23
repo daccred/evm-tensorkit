@@ -10,7 +10,7 @@ const openai = new OpenAI({
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Extract the request body
-    const { messages, contractAddress, network, walletAddress } = req.body;
+    const { messages, contractAddress, network, walletAddress, user } = req.body;
 
     // Validate required parameters
     if (!contractAddress) {
@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       role: 'system',
       content: `You are an AI assistant that helps users interact with the Ethereum smart contract at address ${contractAddress} on the ${network || 'mainnet'} network.
       
-The user's wallet address is ${walletAddress}.
+The user's wallet address is ${walletAddress || user?.wallet?.address}. ${user ? `The user's object is ${user}.` : ''}
 
 The contract has the following functions available:
 ${mcpSchema.map((func: any) => `- ${func.name}: ${func.description}`).join('\n')}
